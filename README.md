@@ -1,6 +1,2 @@
-# SCoT
-SCoT (Sense Clustering over Time) is a web application to view the senses of a word and their evolvement over time. The idea is to help anyone interested in diachronic semantics visualize and compare the meanings a word had at different points in time.
-
-This tool was initially developed in the context of the Master Project "Web Interfaces for Language Processing Systems" at the University of Hamburg in 2019.
-
-For information about current developers, supervisors and related publications, see the GitHub-pages and WebPages of the Language Technology Group of the University of Hamburg.
+# SCoTTi
+SCoTTi (Semantic Clustering of Twitter-Tags over Time) is a fork of SCoT and a web application to view the topics of a hashtag and their evolvement over time. The idea is to help anyone interested in diachronic semantics visualize and compare the meanings a hashtag at different points in time. SCoTTi differs from SCoT in various ways. Most notably the semantic metrics of the Tweets are calculated with a different backend-technology (Scot uses JoBim, Scotti uses Embeddings with optimized settings for tweets). Further, the time-slices are different. Hashtag-semantics change much more quickly than news or books which are main domain for SCoT. 
