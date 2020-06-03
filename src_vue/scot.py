@@ -6,6 +6,7 @@ import chineseWhispers
 import urllib.parse
 import json
 import urllib.request
+from word2vecloader import Word2VecLoader
 
 DEBUG = True
 PARAMETERS = {}
@@ -35,6 +36,8 @@ def index():
 
 @app.route('/api/reclustering', methods=['POST'])
 # recluster the existing graph by running Chinese Whispers on it again
+# precondition: source - target str - weight float not guaranteed
+# thus ensure type-safety for backend by casting
 def recluster():
 	nodes = []
 	links = []
@@ -43,14 +46,14 @@ def recluster():
 		nodes = data["nodes"]
 		links_list = data["links"]
 		for item in links_list:
-			links.append((item["source"], item["target"], {'weight': int(item["weight"])}))
+			links.append((str(item["source"]), str(item["target"]), {'weight': float(item["weight"])}))
 
 		reclustered_graph = chineseWhispers.chinese_whispers(nodes, links)
 		return json.dumps(reclustered_graph)
 
 @app.route('/api/collections')
 def databases_info():
-	with open('config.json') as config_file:
+	with open('./config.json') as config_file:
 			config = json.load(config_file)
 	return json.dumps(config["collections_info_frontend"])
 
@@ -101,9 +104,19 @@ def get_clustered_graph(
 		density):
 		db = Database(getDbFromRequest(collection))
 		time_ids = db.get_time_ids(start_year, end_year)
-		nodes = db.get_nodes(target_word, paradigms, time_ids)
-		edges, nodes, singletons = db.get_edges(nodes, density, time_ids)
+		if target_word == "Xall":
+			nodes = db.get_all_nodes(time_ids)
+		elif target_word[:2] == "WV":
+			print(" in word target")
+			target_word = target_word[3:]
+			w2v = Word2VecLoader()
+			nodes, edges, singletons = w2v.egoGraph(target_word, paradigms, density, time_ids)
+		else:
+			nodes = db.get_nodes(target_word, paradigms, time_ids)
+		if target_word[:2] != "WV":
+			edges, nodes, singletons = db.get_edges(nodes, density, time_ids)
 		
+		#print("in scot.py singletons ", singletons)
 		return singletons, chineseWhispers.chinese_whispers(nodes, edges)
 	
 	singletons, clustered_graph = clusters(collection, target_word, start_year, end_year, paradigms, density)
@@ -138,9 +151,9 @@ def get_edge_info(collection, word1, word2, time_id):
 def simbim(collection="default"):
 	if request.method == 'POST':
 		data = json.loads(request.data)
-		word1 = data["word1"]
-		word2 = data["word2"]
-		time_id = data["time_id"]
+		word1 = str(data["word1"])
+		word2 = str(data["word2"])
+		time_id = int(data["time_id"])
 	print("debug getSimBim words received", word1, " ",  word2)
 	res1_dic, res2_dic, res_set, max1, max2 = get_edge_info(collection, word1, word2, time_id)
 	print("debug getSimbim len(contextWord2) len(contextWord2) len(intersection)", len(res1_dic), len(res2_dic), len(res_set))
@@ -152,7 +165,7 @@ def simbim(collection="default"):
 		return_dic = {}
 		index_count = 0
 		for key in res_set:
-			return_dic[str(index_count)] = {"score": res1_dic[key]/max1, "key" : key, "score2": res2_dic[key]/max2 }
+			return_dic[str(index_count)] = {"score": float(res1_dic[key]/max1), "key" : str(key), "score2": float(res2_dic[key]/max2) }
 			index_count += 1
 	
 		return_dic["error"] = "none"
@@ -199,6 +212,6 @@ def cluster_information():
 
 if __name__ == '__main__':
 	# use the config file to get host and database parameters
-	with open('config.json') as config_file:
+	with open('./config.json') as config_file:
 		config = json.load(config_file)
 	app.run(host=config['host'])
